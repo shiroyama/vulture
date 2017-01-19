@@ -1,4 +1,5 @@
 apply plugin: 'java'
+apply plugin: 'com.novoda.bintray-release'
 
 targetCompatibility = JavaVersion.VERSION_1_8
 sourceCompatibility = JavaVersion.VERSION_1_8
@@ -17,3 +18,12 @@ sourceSets {
     }
 }
 
+publish {
+    userOrg = 'srym'
+    groupId = 'us.shiroyama.android'
+    artifactId = 'vulture-processor'
+    version = '0.1.0'
+    description = "Vulture is an Android library that let you handle asynchronous callbacks properly within Activity/Fragment's life cycle. "
+    website = 'https://github.com/srym/vulture'
+    licences = ['Apache-2.0']
+}
