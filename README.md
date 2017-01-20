@@ -74,7 +74,7 @@ Vulture is now alpha release and there are a few limitations.
 
 ## Under the Hood
 
-Vulture is based on the brilliant idea of `PauseHandler` mentioned [here]("http://stackoverflow.com/questions/8040280/how-to-handle-handler-messages-when-activity-fragment-is-paused"). Thank you.
+Vulture is based on the brilliant idea of `PauseHandler` discussed at [Stack Overflow](http://stackoverflow.com/questions/8040280/how-to-handle-handler-messages-when-activity-fragment-is-paused "How to handle Handler messages when activity/fragment is paused"). Thank you.
 
 ## License
 
