@@ -60,15 +60,6 @@ Check `sample` and generated codes for details.
 ## Installation
 
 ```
-repositories {
-    jcenter()
-    maven {
-        url "http://dl.bintray.com/srym/maven"
-    }
-}
-```
-
-```
 annotationProcessor 'us.shiroyama.android:vulture-processor:0.1.0'
 compile 'us.shiroyama.android:vulture:0.1.0'
 ```
@@ -78,6 +69,7 @@ compile 'us.shiroyama.android:vulture:0.1.0'
 Vulture is now alpha release and there are a few limitations.
 
  * Methods annotated with `@SafeCallback` can only have parameters of the primitive types (including its boxed types)  & String type so far.
+ * Lint for processor is not implemented properly yet.
  * Maybe more...
 
 ## Under the Hood
