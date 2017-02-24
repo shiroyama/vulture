@@ -53,6 +53,7 @@ import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeDoubl
 import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeFloat;
 import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeInt;
 import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeLong;
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeParcelable;
 import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeShort;
 import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeString;
 
@@ -301,28 +302,30 @@ public class VultureProcessor extends AbstractProcessor {
                 .collect(Collectors.toList());
     }
 
+    private boolean isSupportedType(TypeName typeName) {
+        return isTypeBoolean(typeName) || isTypeByte(typeName) || isTypeShort(typeName) || isTypeChar(typeName) || isTypeInt(typeName) || isTypeLong(typeName) || isTypeFloat(typeName) || isTypeDouble(typeName) || isTypeString(typeName) || isTypeBundle(typeName) || isTypeParcelable(typeName);
+    }
+
     private void buildGetBundleStatement(String receiverName, MethodSpec.Builder methodBuilder, MethodParam methodParam) {
         TypeName typeName = methodParam.type;
 
-        if (isTypeBoolean(typeName) || isTypeByte(typeName) || isTypeShort(typeName) || isTypeChar(typeName) || isTypeInt(typeName) || isTypeLong(typeName) || isTypeFloat(typeName) || isTypeDouble(typeName) || isTypeString(typeName) || isTypeBundle(typeName)) {
-            String getMethod = String.format("get%s", ((ClassName) typeName.box()).simpleName());
-            methodBuilder.addStatement("$T $L = $L.$L($S)", typeName, methodParam.name, receiverName, getMethod, methodParam.name);
-            return;
+        if (!isSupportedType(typeName)) {
+            throw new IllegalArgumentException(String.format("TypeName %s is not supported.", typeName.toString()));
         }
 
-        throw new IllegalArgumentException(String.format("TypeName %s is not supported.", typeName.toString()));
+        String getMethod = String.format("get%s", ((ClassName) typeName.box()).simpleName());
+        methodBuilder.addStatement("$T $L = $L.$L($S)", typeName, methodParam.name, receiverName, getMethod, methodParam.name);
     }
 
     private void buildPutBundleStatement(String receiverName, ParameterSpec parameterSpec, MethodSpec.Builder methodBuilder) {
         TypeName typeName = parameterSpec.type;
 
-        if (isTypeBoolean(typeName) || isTypeByte(typeName) || isTypeShort(typeName) || isTypeChar(typeName) || isTypeInt(typeName) || isTypeLong(typeName) || isTypeFloat(typeName) || isTypeDouble(typeName) || isTypeString(typeName) || isTypeBundle(typeName)) {
-            String putMethod = String.format("put%s", ((ClassName) typeName.box()).simpleName());
-            methodBuilder.addStatement("$L.$L($S, $L)", receiverName, putMethod, parameterSpec.name, parameterSpec.name);
-            return;
+        if (!isSupportedType(typeName)) {
+            throw new IllegalArgumentException(String.format("TypeName %s is not supported.", typeName.toString()));
         }
 
-        throw new IllegalArgumentException(String.format("TypeName %s is not supported.", typeName.toString()));
+        String putMethod = String.format("put%s", ((ClassName) typeName.box()).simpleName());
+        methodBuilder.addStatement("$L.$L($S, $L)", receiverName, putMethod, parameterSpec.name, parameterSpec.name);
     }
 
     private String getTargetClassName(TypeElement originalClass) {
