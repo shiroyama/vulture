@@ -1,6 +1,7 @@
 package us.shiroyama.android.vulture.processor.utils;
 
 import android.os.Bundle;
+import android.os.Parcelable;
 
 import com.squareup.javapoet.TypeName;
 
@@ -48,6 +49,10 @@ public class TypeUtils {
 
     public static boolean isTypeBundle(TypeName typeName) {
         return TypeName.get(Bundle.class).equals(typeName);
+    }
+
+    public static boolean isTypeParcelable(TypeName typeName) {
+        return TypeName.get(Parcelable.class).equals(typeName);
     }
 
     public static TypeName unbox(TypeName typeName) {
