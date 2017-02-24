@@ -60,17 +60,16 @@ Check `sample` and generated codes for details.
 ## Installation
 
 ```
-annotationProcessor 'us.shiroyama.android:vulture-processor:0.1.0'
-compile 'us.shiroyama.android:vulture:0.1.0'
+annotationProcessor 'us.shiroyama.android:vulture-processor:0.2.0'
+compile 'us.shiroyama.android:vulture:0.2.0'
 ```
 
 ## Limitations
 
 Vulture is now alpha release and there are a few limitations.
 
- * Methods annotated with `@SafeCallback` can only have parameters of the primitive types (including its boxed types)  & String type so far.
+ * Supported types for method arguments annotated with `@SafeCallback` are `primitive types` (including its boxed types), `String`, `Bundle`, `Parcelable` so far.
  * Lint for processor is not implemented properly yet.
- * Maybe more...
 
 ## Under the Hood
 
