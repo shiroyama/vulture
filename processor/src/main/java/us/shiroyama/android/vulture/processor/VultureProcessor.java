@@ -44,7 +44,17 @@ import us.shiroyama.android.vulture.annotations.ObserveLifecycle;
 import us.shiroyama.android.vulture.annotations.SafeCallback;
 import us.shiroyama.android.vulture.processor.data.MethodParam;
 import us.shiroyama.android.vulture.processor.utils.StringUtils;
-import us.shiroyama.android.vulture.processor.utils.TypeUtils;
+
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeBoolean;
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeBundle;
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeByte;
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeChar;
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeDouble;
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeFloat;
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeInt;
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeLong;
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeShort;
+import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeString;
 
 /**
  * Annotation Processor
@@ -222,8 +232,9 @@ public class VultureProcessor extends AbstractProcessor {
                                     .addCode("case $L: ", entry.getValue())
                                     .addCode("{\n$>");
                             if (methodParams.size() > 0) {
-                                methodBuilder.addStatement("$T data = message.getData()", Bundle.class);
-                                methodParams.forEach(methodParam -> buildGetBundleStatement(methodBuilder, methodParam));
+                                String receiverName = "data";
+                                methodBuilder.addStatement("$T $L = message.getData()", Bundle.class, receiverName);
+                                methodParams.forEach(methodParam -> buildGetBundleStatement(receiverName, methodBuilder, methodParam));
                             }
                             methodBuilder
                                     .beginControlFlow("if ($N.get() != null)", targetRef)
@@ -278,8 +289,9 @@ public class VultureProcessor extends AbstractProcessor {
 
                     if (parameterSpecs.size() > 0) {
                         TypeName typeBundle = TypeName.get(Bundle.class);
-                        methodBuilder.addStatement("$T data = new $T()", typeBundle, typeBundle);
-                        parameterSpecs.forEach(parameterSpec -> buildPutBundleStatement(methodBuilder, parameterSpec));
+                        String receiverName = "data";
+                        methodBuilder.addStatement("$T $L = new $T()", typeBundle, receiverName, typeBundle);
+                        parameterSpecs.forEach(parameterSpec -> buildPutBundleStatement(receiverName, parameterSpec, methodBuilder));
                         methodBuilder.addStatement("handlerMessage.setData(data)");
                     }
 
@@ -289,54 +301,28 @@ public class VultureProcessor extends AbstractProcessor {
                 .collect(Collectors.toList());
     }
 
-    private void buildGetBundleStatement(MethodSpec.Builder methodBuilder, MethodParam methodParam) {
+    private void buildGetBundleStatement(String receiverName, MethodSpec.Builder methodBuilder, MethodParam methodParam) {
         TypeName typeName = methodParam.type;
-        if (TypeUtils.isTypeBoolean(typeName)) {
-            methodBuilder.addStatement("$T $L = data.getBoolean($S)", typeName, methodParam.name, methodParam.name);
-        } else if (TypeUtils.isTypeByte(typeName)) {
-            methodBuilder.addStatement("$T $L = data.getByte($S)", typeName, methodParam.name, methodParam.name);
-        } else if (TypeUtils.isTypeShort(typeName)) {
-            methodBuilder.addStatement("$T $L = data.getShort($S)", typeName, methodParam.name, methodParam.name);
-        } else if (TypeUtils.isTypeChar(typeName)) {
-            methodBuilder.addStatement("$T $L = data.getCar($S)", typeName, methodParam.name, methodParam.name);
-        } else if (TypeUtils.isTypeInt(typeName)) {
-            methodBuilder.addStatement("$T $L = data.getInt($S)", typeName, methodParam.name, methodParam.name);
-        } else if (TypeUtils.isTypeLong(typeName)) {
-            methodBuilder.addStatement("$T $L = data.getLong($S)", typeName, methodParam.name, methodParam.name);
-        } else if (TypeUtils.isTypeFloat(typeName)) {
-            methodBuilder.addStatement("$T $L = data.getFloat($S)", typeName, methodParam.name, methodParam.name);
-        } else if (TypeUtils.isTypeDouble(typeName)) {
-            methodBuilder.addStatement("$T $L = data.getDouble($S)", typeName, methodParam.name, methodParam.name);
-        } else if (TypeUtils.isTypeString(typeName)) {
-            methodBuilder.addStatement("$T $L = data.getString($S)", typeName, methodParam.name, methodParam.name);
-        } else {
-            throw new IllegalArgumentException(String.format("TypeName %s is not supported.", typeName.toString()));
+
+        if (isTypeBoolean(typeName) || isTypeByte(typeName) || isTypeShort(typeName) || isTypeChar(typeName) || isTypeInt(typeName) || isTypeLong(typeName) || isTypeFloat(typeName) || isTypeDouble(typeName) || isTypeString(typeName) || isTypeBundle(typeName)) {
+            String getMethod = String.format("get%s", ((ClassName) typeName.box()).simpleName());
+            methodBuilder.addStatement("$T $L = $L.$L($S)", typeName, methodParam.name, receiverName, getMethod, methodParam.name);
+            return;
         }
+
+        throw new IllegalArgumentException(String.format("TypeName %s is not supported.", typeName.toString()));
     }
 
-    private void buildPutBundleStatement(MethodSpec.Builder methodBuilder, ParameterSpec parameterSpec) {
+    private void buildPutBundleStatement(String receiverName, ParameterSpec parameterSpec, MethodSpec.Builder methodBuilder) {
         TypeName typeName = parameterSpec.type;
-        if (TypeUtils.isTypeBoolean(typeName)) {
-            methodBuilder.addStatement("data.putBoolean($S, $L)", parameterSpec.name, parameterSpec.name);
-        } else if (TypeUtils.isTypeByte(typeName)) {
-            methodBuilder.addStatement("data.putByte($S, $L)", parameterSpec.name, parameterSpec.name);
-        } else if (TypeUtils.isTypeShort(typeName)) {
-            methodBuilder.addStatement("data.putShort($S, $L)", parameterSpec.name, parameterSpec.name);
-        } else if (TypeUtils.isTypeChar(typeName)) {
-            methodBuilder.addStatement("data.putChar($S, $L)", parameterSpec.name, parameterSpec.name);
-        } else if (TypeUtils.isTypeInt(typeName)) {
-            methodBuilder.addStatement("data.putInt($S, $L)", parameterSpec.name, parameterSpec.name);
-        } else if (TypeUtils.isTypeLong(typeName)) {
-            methodBuilder.addStatement("data.putLong($S, $L)", parameterSpec.name, parameterSpec.name);
-        } else if (TypeUtils.isTypeFloat(typeName)) {
-            methodBuilder.addStatement("data.putFloat($S, $L)", parameterSpec.name, parameterSpec.name);
-        } else if (TypeUtils.isTypeDouble(typeName)) {
-            methodBuilder.addStatement("data.putDouble($S, $L)", parameterSpec.name, parameterSpec.name);
-        } else if (TypeUtils.isTypeString(typeName)) {
-            methodBuilder.addStatement("data.putString($S, $L)", parameterSpec.name, parameterSpec.name);
-        } else {
-            throw new IllegalArgumentException(String.format("TypeName %s is not supported.", typeName.toString()));
+
+        if (isTypeBoolean(typeName) || isTypeByte(typeName) || isTypeShort(typeName) || isTypeChar(typeName) || isTypeInt(typeName) || isTypeLong(typeName) || isTypeFloat(typeName) || isTypeDouble(typeName) || isTypeString(typeName) || isTypeBundle(typeName)) {
+            String putMethod = String.format("put%s", ((ClassName) typeName.box()).simpleName());
+            methodBuilder.addStatement("$L.$L($S, $L)", receiverName, putMethod, parameterSpec.name, parameterSpec.name);
+            return;
         }
+
+        throw new IllegalArgumentException(String.format("TypeName %s is not supported.", typeName.toString()));
     }
 
     private String getTargetClassName(TypeElement originalClass) {

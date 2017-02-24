@@ -1,5 +1,7 @@
 package us.shiroyama.android.vulture.processor.utils;
 
+import android.os.Bundle;
+
 import com.squareup.javapoet.TypeName;
 
 /**
@@ -44,7 +46,11 @@ public class TypeUtils {
         return TypeName.get(String.class).equals(typeName);
     }
 
-    private static TypeName unbox(TypeName typeName) {
+    public static boolean isTypeBundle(TypeName typeName) {
+        return TypeName.get(Bundle.class).equals(typeName);
+    }
+
+    public static TypeName unbox(TypeName typeName) {
         try {
             return typeName.unbox();
         } catch (UnsupportedOperationException e) {
