@@ -16,7 +16,6 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Locale;
@@ -32,6 +31,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -44,6 +44,7 @@ import us.shiroyama.android.vulture.PauseHandler;
 import us.shiroyama.android.vulture.annotations.ObserveLifecycle;
 import us.shiroyama.android.vulture.annotations.SafeCallback;
 import us.shiroyama.android.vulture.processor.data.MethodParam;
+import us.shiroyama.android.vulture.processor.exceptions.ProcessingException;
 import us.shiroyama.android.vulture.processor.utils.StringUtils;
 
 import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeBoolean;
@@ -102,35 +103,41 @@ public class VultureProcessor extends AbstractProcessor {
                 .stream()
                 .filter(element -> element.getKind() == ElementKind.CLASS)
                 .forEach(typeElement -> {
-                    TypeElement originalClass = (TypeElement) typeElement;
-                    String targetPackage = elementUtils.getPackageOf(originalClass).getQualifiedName().toString();
-
-                    List<ExecutableElement> safeCallbackMethods = getSafeCallbackMethods(originalClass);
-                    Map<ExecutableElement, String> methodToIdMap = getMethodToIdMap(safeCallbackMethods);
-                    FieldSpec targetRefSpec = getTargetRefSpec(originalClass);
-                    Map<ExecutableElement, List<MethodParam>> methodToParams = getMethodToParams(safeCallbackMethods);
-                    TypeSpec pauseHandlerSpec = getConcretePauseHandler(methodToIdMap, methodToParams, targetRefSpec);
-                    FieldSpec handlerFieldSpec = getHandlerFieldSpec(pauseHandlerSpec);
-
-                    TypeSpec targetTypeSpec = TypeSpec
-                            .classBuilder(getTargetClassName(originalClass))
-                            .addModifiers(Modifier.FINAL)
-                            .addFields(getIdFieldSpecs(methodToIdMap))
-                            .addField(handlerFieldSpec)
-                            .addField(targetRefSpec)
-                            .addType(pauseHandlerSpec)
-                            .addMethod(getRegisterMethodSpecs(originalClass, targetRefSpec, handlerFieldSpec))
-                            .addMethod(getUnregisterMethodSpecs(handlerFieldSpec))
-                            .addMethods(getMethodSpecs(handlerFieldSpec, methodToParams, methodToIdMap))
-                            .build();
-                    JavaFile javaFile = JavaFile
-                            .builder(targetPackage, targetTypeSpec)
-                            .addFileComment("This is auto-generated code. Do not modify this directly.")
-                            .build();
-
                     try {
+                        TypeElement originalClass = (TypeElement) typeElement;
+                        String targetPackage = elementUtils.getPackageOf(originalClass).getQualifiedName().toString();
+
+                        List<ExecutableElement> safeCallbackMethods = getSafeCallbackMethods(originalClass);
+                        Map<ExecutableElement, String> methodToIdMap = getMethodToIdMap(safeCallbackMethods);
+                        FieldSpec targetRefSpec = getTargetRefSpec(originalClass);
+                        Map<ExecutableElement, List<MethodParam>> methodToParams = getMethodToParams(safeCallbackMethods);
+                        TypeSpec pauseHandlerSpec = getConcretePauseHandler(methodToIdMap, methodToParams, targetRefSpec);
+                        FieldSpec handlerFieldSpec = getHandlerFieldSpec(pauseHandlerSpec);
+
+                        TypeSpec targetTypeSpec = TypeSpec
+                                .classBuilder(getTargetClassName(originalClass))
+                                .addModifiers(Modifier.FINAL)
+                                .addFields(getIdFieldSpecs(methodToIdMap))
+                                .addField(handlerFieldSpec)
+                                .addField(targetRefSpec)
+                                .addType(pauseHandlerSpec)
+                                .addMethod(getRegisterMethodSpecs(originalClass, targetRefSpec, handlerFieldSpec))
+                                .addMethod(getUnregisterMethodSpecs(handlerFieldSpec))
+                                .addMethods(getMethodSpecs(handlerFieldSpec, methodToParams, methodToIdMap))
+                                .build();
+                        JavaFile javaFile = JavaFile
+                                .builder(targetPackage, targetTypeSpec)
+                                .addFileComment("This is auto-generated code. Do not modify this directly.")
+                                .build();
+
                         javaFile.writeTo(filer);
-                    } catch (IOException e) {
+                    } catch (ProcessingException e) {
+                        if (e.getInvalidElement() != null) {
+                            messager.printMessage(Diagnostic.Kind.ERROR, e.getMessage(), e.getInvalidElement());
+                        } else {
+                            messager.printMessage(Diagnostic.Kind.ERROR, e.getMessage());
+                        }
+                    } catch (Exception e) {
                         messager.printMessage(Diagnostic.Kind.ERROR, e.getMessage());
                     }
                 });
@@ -316,11 +323,25 @@ public class VultureProcessor extends AbstractProcessor {
         return isTypeBoolean(typeName) || isTypeByte(typeName) || isTypeShort(typeName) || isTypeChar(typeName) || isTypeInt(typeName) || isTypeLong(typeName) || isTypeFloat(typeName) || isTypeDouble(typeName) || isTypeString(typeName) || isTypeBundle(typeName) || isTypeParcelable(typeName);
     }
 
+    private void throwProcessingException(String message, Element invalidElement) {
+        ProcessingException exception = new ProcessingException(message);
+        if (invalidElement != null) {
+            exception.setInvalidElement(invalidElement);
+        }
+        throw exception;
+    }
+
+    private void throwProcessingException(String message) {
+        throwProcessingException(message, null);
+    }
+
     private void buildGetBundleStatement(String receiverName, MethodSpec.Builder methodBuilder, MethodParam methodParam) {
         TypeName typeName = methodParam.type;
 
         if (!isSupportedType(typeName)) {
-            throw new IllegalArgumentException(String.format("TypeName %s is not supported.", typeName.toString()));
+            String message = String.format("Parameter type %s is not supported.\nSee README for supported types.", typeName.toString());
+            Element invalidElement = methodParam.element;
+            throwProcessingException(message, invalidElement);
         }
 
         String getMethod = String.format("get%s", ((ClassName) typeName.box()).simpleName());
@@ -331,7 +352,8 @@ public class VultureProcessor extends AbstractProcessor {
         TypeName typeName = parameterSpec.type;
 
         if (!isSupportedType(typeName)) {
-            throw new IllegalArgumentException(String.format("TypeName %s is not supported.", typeName.toString()));
+            String message = String.format("Parameter type %s is not supported.\nSee README for supported types.", typeName.toString());
+            throwProcessingException(message);
         }
 
         String putMethod = String.format("put%s", ((ClassName) typeName.box()).simpleName());
