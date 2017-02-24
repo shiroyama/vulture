@@ -62,8 +62,8 @@ Check `sample` and generated codes for details.
 [ ![Download](https://api.bintray.com/packages/srym/maven/vulture/images/download.svg) ](https://bintray.com/srym/maven/vulture/_latestVersion)
 
 ```
-annotationProcessor 'us.shiroyama.android:vulture-processor:0.2.1'
-compile 'us.shiroyama.android:vulture:0.2.1'
+annotationProcessor 'us.shiroyama.android:vulture-processor:0.2.2'
+compile 'us.shiroyama.android:vulture:0.2.2'
 ```
 
 ## Limitations
