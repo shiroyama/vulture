@@ -59,6 +59,8 @@ Check `sample` and generated codes for details.
 
 ## Installation
 
+[ ![Download](https://api.bintray.com/packages/srym/maven/vulture/images/download.svg) ](https://bintray.com/srym/maven/vulture/_latestVersion)
+
 ```
 annotationProcessor 'us.shiroyama.android:vulture-processor:0.2.0'
 compile 'us.shiroyama.android:vulture:0.2.0'
