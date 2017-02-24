@@ -6,6 +6,7 @@ import android.os.Message;
 
 import com.google.auto.service.AutoService;
 import com.google.common.collect.ImmutableSet;
+import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
@@ -93,7 +94,7 @@ public class VultureProcessor extends AbstractProcessor {
     @TargetApi(24)
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
-        if (annotations.size() == 0) {
+        if (annotations.isEmpty()) {
             return true;
         }
 
@@ -198,7 +199,7 @@ public class VultureProcessor extends AbstractProcessor {
                                     .map(varElm -> {
                                         String paramName = String.format(Locale.US, "arg%d", index.incrementAndGet());
                                         TypeName typeName = TypeName.get(varElm.asType());
-                                        return MethodParam.of(paramName, typeName);
+                                        return MethodParam.of(paramName, typeName, varElm);
                                     })
                                     .collect(Collectors.toList());
                         }
@@ -274,9 +275,18 @@ public class VultureProcessor extends AbstractProcessor {
                 .map(entry -> {
                     ExecutableElement method = entry.getKey();
                     List<MethodParam> methodParams = entry.getValue();
+
                     List<ParameterSpec> parameterSpecs = methodParams
                             .stream()
-                            .map(signature -> ParameterSpec.builder(signature.type, signature.name).build())
+                            .map(param -> {
+                                List<AnnotationSpec> annotationSpecs = param.element.getAnnotationMirrors()
+                                        .stream()
+                                        .map(AnnotationSpec::get)
+                                        .collect(Collectors.toList());
+                                return ParameterSpec
+                                        .builder(param.type, param.name)
+                                        .addAnnotations(annotationSpecs).build();
+                            })
                             .collect(Collectors.toList());
 
                     MethodSpec.Builder methodBuilder = MethodSpec
