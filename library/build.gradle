@@ -37,7 +37,7 @@ publish {
     userOrg = 'srym'
     groupId = 'us.shiroyama.android'
     artifactId = 'vulture'
-    publishVersion = '0.2.3'
+    publishVersion = '0.3.0'
     desc = "Vulture is an Android library that let you handle asynchronous callbacks properly within Activity/Fragment's life cycle. "
     website = 'https://github.com/srym/vulture'
     licences = ['Apache-2.0']
