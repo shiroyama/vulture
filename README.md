@@ -66,12 +66,18 @@ annotationProcessor 'us.shiroyama.android:vulture-processor:0.2.3'
 compile 'us.shiroyama.android:vulture:0.2.3'
 ```
 
-## Limitations
+## Supported Types
 
-Vulture is now alpha release and there are a few limitations.
+Vulture supports argument types for methods annotated with `@SafeCallback` listed below.
 
- * Supported types for method arguments annotated with `@SafeCallback` are `primitive types` (including its boxed types), `String`, `Bundle`, `Parcelable` so far.
- * Lint for processor is not implemented properly yet.
+ * All primitive types and its boxed types.
+ * All primitive array types (arrays of boxed types are *NOT* supported)
+ * String
+ * Bundle
+ * Serializable
+ * Parcelable
+ * ParcelableArray
+ * ParcelableArrayList
 
 ## Under the Hood
 
