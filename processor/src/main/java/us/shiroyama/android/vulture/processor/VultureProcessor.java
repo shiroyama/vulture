@@ -324,6 +324,9 @@ public class VultureProcessor extends AbstractProcessor {
     }
 
     private boolean isSupportedType(MethodParam methodParam) {
+        // TODO revert
+        return true;
+        /*
         return isPrimitive(methodParam.type)
                 || isTypeString(methodParam.type)
                 || isTypeBundle(methodParam.type)
@@ -332,6 +335,7 @@ public class VultureProcessor extends AbstractProcessor {
                 || isParcelableArray(typeUtils, elementUtils, methodParam.element)
                 || isSerializable(typeUtils, elementUtils, methodParam.element)
                 || isTypeParcelable(typeUtils, elementUtils, methodParam.element);
+                */
     }
 
     private void throwProcessingException(String message, Element invalidElement) {
@@ -380,7 +384,9 @@ public class VultureProcessor extends AbstractProcessor {
             getMethod = "getParcelable";
             isParcelable = true;
         } else {
-            throw new RuntimeException("Unknown error");
+            // TODO revert
+            getMethod = "getSerializable";
+            // throw new RuntimeException("Unknown error");
         }
         if (isSerializable || isParcelable || isParcelableArray) {
             methodBuilder.addStatement("$T $L = ($T) $L.$L($S)", typeName, methodName, typeName, receiverName, getMethod, methodName);
@@ -416,7 +422,9 @@ public class VultureProcessor extends AbstractProcessor {
         } else if (isTypeParcelable(typeUtils, elementUtils, element)) {
             putMethod = "putParcelable";
         } else {
-            throw new RuntimeException("Unknown error");
+            // TODO revert
+            putMethod = "putSerializable";
+            // throw new RuntimeException("Unknown error");
         }
         methodBuilder.addStatement("$L.$L($S, $L)", receiverName, putMethod, methodName, methodName);
     }

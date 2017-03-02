@@ -6,8 +6,13 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
+import java.util.List;
+
 import us.shiroyama.android.vulture.annotations.ObserveLifecycle;
 import us.shiroyama.android.vulture.annotations.SafeCallback;
+import us.shiroyama.android.vulture.annotations.Serializable;
+import us.shiroyama.android.vulture.sample.data.User;
+import us.shiroyama.android.vulture.sample.serializers.ParcelSerializer;
 
 /**
  * @author Fumihiko Shiroyama
@@ -73,10 +78,35 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    private void fetchUsers() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Log.d(TAG, "fetchUsers(): started.");
+                    Thread.sleep(2000L);
+                    Log.d(TAG, "fetchUsers(): finished.");
+
+                } catch (InterruptedException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                }
+            }
+        }).start();
+    }
+
     @SafeCallback
     void doCallback(@NonNull String message) {
         Log.d(TAG, "doCallback() called. message: " + message);
         FinishDialog.newInstance(message).show(getSupportFragmentManager(), FinishDialog.TAG);
+    }
+
+    @SafeCallback
+    void fetchUsersCallback(@Serializable(serializer = ParcelSerializer.class) List<User> users) {
+        Log.d(TAG, "fetchUsersCallback() is callbacked.");
+        for (User user : users) {
+            Log.d(TAG, "user name: " + user.getName());
+            Log.d(TAG, "user age: " + user.getAge());
+        }
     }
 
 }
