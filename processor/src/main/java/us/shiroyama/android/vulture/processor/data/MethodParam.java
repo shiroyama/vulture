@@ -8,6 +8,8 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.MirroredTypeException;
+import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 
 import us.shiroyama.android.vulture.annotations.Serializable;
 import us.shiroyama.android.vulture.processor.utils.Pair;
@@ -20,11 +22,31 @@ import us.shiroyama.android.vulture.serializers.DefaultSerializer;
 
 @TargetApi(24)
 public class MethodParam {
+    private final Types typeUtils;
+
+    private final Elements elementUtils;
+
     public final String name;
+
+    public final VariableElement element;
 
     public final TypeName type;
 
-    public final VariableElement element;
+    public boolean isPrimitive;
+
+    public boolean isPrimitiveArray;
+
+    public boolean isString;
+
+    public boolean isBundle;
+
+    public boolean isParcelable;
+
+    public boolean isParcelableArray;
+
+    public boolean isParcelableArrayList;
+
+    public boolean isSerializable;
 
     public TypeName serializerType;
 
@@ -32,10 +54,15 @@ public class MethodParam {
 
     public TypeName serializeTo;
 
-    private MethodParam(String name, TypeName type, VariableElement element) {
+    public MethodParam(Types typeUtils, Elements elementUtils, String name, VariableElement element) {
+        this.typeUtils = typeUtils;
+        this.elementUtils = elementUtils;
+
         this.name = name;
-        this.type = type;
         this.element = element;
+        this.type = TypeName.get(element.asType());
+
+        detectType();
 
         Serializable serializable = element.getAnnotation(Serializable.class);
         if (serializable != null) {
@@ -57,11 +84,36 @@ public class MethodParam {
         }
     }
 
+    private void detectType() {
+        if (TypeUtils.isPrimitive(type)) {
+            isPrimitive = true;
+        } else if (TypeUtils.isPrimitiveArray(element)) {
+            isPrimitiveArray = true;
+        } else if (TypeUtils.isTypeString(type)) {
+            isString = true;
+        } else if (TypeUtils.isTypeBundle(type)) {
+            isBundle = true;
+        } else if (TypeUtils.isParcelableArrayList(typeUtils, elementUtils, element)) {
+            isParcelableArrayList = true;
+        } else if (TypeUtils.isParcelableArray(typeUtils, elementUtils, element)) {
+            isParcelableArray = true;
+        } else if (TypeUtils.isTypeParcelable(typeUtils, elementUtils, element)) {
+            isParcelable = true;
+        } else if (TypeUtils.isSerializable(typeUtils, elementUtils, element)) {
+            isSerializable = true;
+        }
+    }
+
     public boolean hasSerializer() {
         return serializerType != null && !TypeName.get(DefaultSerializer.class).equals(serializerType);
     }
 
-    public static MethodParam of(String name, TypeName type, VariableElement element) {
-        return new MethodParam(name, type, element);
+    public boolean isSupportedType() {
+        return isPrimitive || isPrimitiveArray || isString || isBundle || isParcelable || isParcelableArray || isParcelableArrayList || isSerializable || hasSerializer();
     }
+
+    public boolean needCast() {
+        return isSerializable || isParcelable || isParcelableArray;
+    }
+
 }

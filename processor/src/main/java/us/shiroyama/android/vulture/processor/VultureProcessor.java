@@ -51,14 +51,6 @@ import us.shiroyama.android.vulture.processor.utils.StringUtils;
 import static us.shiroyama.android.vulture.processor.utils.TypeUtils.getPrimitiveArrayClassName;
 import static us.shiroyama.android.vulture.processor.utils.TypeUtils.getPrimitiveClassName;
 import static us.shiroyama.android.vulture.processor.utils.TypeUtils.getSimpleClassName;
-import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isParcelableArray;
-import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isParcelableArrayList;
-import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isPrimitive;
-import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isPrimitiveArray;
-import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isSerializable;
-import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeBundle;
-import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeParcelable;
-import static us.shiroyama.android.vulture.processor.utils.TypeUtils.isTypeString;
 
 /**
  * Annotation Processor
@@ -204,10 +196,9 @@ public class VultureProcessor extends AbstractProcessor {
                             AtomicInteger index = new AtomicInteger(0);
                             return method.getParameters()
                                     .stream()
-                                    .map(varElm -> {
+                                    .map(variableElement -> {
                                         String paramName = String.format(Locale.US, "arg%d", index.incrementAndGet());
-                                        TypeName typeName = TypeName.get(varElm.asType());
-                                        return MethodParam.of(paramName, typeName, varElm);
+                                        return new MethodParam(typeUtils, elementUtils, paramName, variableElement);
                                     })
                                     .collect(Collectors.toList());
                         }
@@ -323,21 +314,6 @@ public class VultureProcessor extends AbstractProcessor {
                 .collect(Collectors.toList());
     }
 
-    private boolean isSupportedType(MethodParam methodParam) {
-        // TODO revert
-        return true;
-        /*
-        return isPrimitive(methodParam.type)
-                || isTypeString(methodParam.type)
-                || isTypeBundle(methodParam.type)
-                || isPrimitiveArray(methodParam.element)
-                || isParcelableArrayList(typeUtils, elementUtils, methodParam.element)
-                || isParcelableArray(typeUtils, elementUtils, methodParam.element)
-                || isSerializable(typeUtils, elementUtils, methodParam.element)
-                || isTypeParcelable(typeUtils, elementUtils, methodParam.element);
-                */
-    }
-
     private void throwProcessingException(String message, Element invalidElement) {
         ProcessingException exception = new ProcessingException(message);
         if (invalidElement != null) {
@@ -351,82 +327,67 @@ public class VultureProcessor extends AbstractProcessor {
     }
 
     private void buildGetBundleStatement(String receiverName, MethodSpec.Builder methodBuilder, MethodParam methodParam) {
-        if (!isSupportedType(methodParam)) {
+        if (!methodParam.isSupportedType()) {
             String message = String.format("Parameter type %s is not supported.\nSee README for supported types.", methodParam.type.toString());
             Element invalidElement = methodParam.element;
             throwProcessingException(message, invalidElement);
         }
 
-        String methodName = methodParam.name;
-        TypeName typeName = methodParam.type;
-        Element element = methodParam.element;
-
-        boolean isParcelableArray = false;
-        boolean isParcelable = false;
-        boolean isSerializable = false;
-
         String getMethod;
-        if (isPrimitive(typeName)) {
-            getMethod = "get" + getPrimitiveClassName(typeName);
-        } else if (isTypeString(typeName) || isTypeBundle(typeName)) {
-            getMethod = "get" + getSimpleClassName(typeName);
-        } else if (isPrimitiveArray(element)) {
-            getMethod = "get" + getPrimitiveArrayClassName(element);
-        } else if (isParcelableArrayList(typeUtils, elementUtils, element)) {
+        if (methodParam.isPrimitive) {
+            getMethod = "get" + getPrimitiveClassName(methodParam.type);
+        } else if (methodParam.isString || methodParam.isBundle) {
+            getMethod = "get" + getSimpleClassName(methodParam.type);
+        } else if (methodParam.isPrimitiveArray) {
+            getMethod = "get" + getPrimitiveArrayClassName(methodParam.element);
+        } else if (methodParam.isParcelableArrayList) {
             getMethod = "getParcelableArrayList";
-        } else if (isParcelableArray(typeUtils, elementUtils, element)) {
+        } else if (methodParam.isParcelableArray) {
             getMethod = "getParcelableArray";
-            isParcelableArray = true;
-        } else if (isSerializable(typeUtils, elementUtils, element)) {
+        } else if (methodParam.isSerializable) {
             getMethod = "getSerializable";
-            isSerializable = true;
-        } else if (isTypeParcelable(typeUtils, elementUtils, element)) {
+        } else if (methodParam.isParcelable) {
             getMethod = "getParcelable";
-            isParcelable = true;
         } else {
             // TODO revert
             getMethod = "getSerializable";
             // throw new RuntimeException("Unknown error");
         }
-        if (isSerializable || isParcelable || isParcelableArray) {
-            methodBuilder.addStatement("$T $L = ($T) $L.$L($S)", typeName, methodName, typeName, receiverName, getMethod, methodName);
+        if (methodParam.needCast()) {
+            methodBuilder.addStatement("$T $L = ($T) $L.$L($S)", methodParam.type, methodParam.name, methodParam.type, receiverName, getMethod, methodParam.name);
         } else {
-            methodBuilder.addStatement("$T $L = $L.$L($S)", typeName, methodName, receiverName, getMethod, methodName);
+            methodBuilder.addStatement("$T $L = $L.$L($S)", methodParam.type, methodParam.name, receiverName, getMethod, methodParam.name);
         }
     }
 
     private void buildPutBundleStatement(String receiverName, MethodSpec.Builder methodBuilder, MethodParam methodParam) {
-        if (!isSupportedType(methodParam)) {
+        if (!methodParam.isSupportedType()) {
             String message = String.format("Parameter type %s is not supported.\nSee README for supported types.", methodParam.type.toString());
             Element invalidElement = methodParam.element;
             throwProcessingException(message, invalidElement);
         }
 
-        String methodName = methodParam.name;
-        TypeName typeName = methodParam.type;
-        Element element = methodParam.element;
-
         String putMethod;
-        if (isPrimitive(typeName)) {
-            putMethod = "put" + getPrimitiveClassName(typeName);
-        } else if (isTypeString(typeName) || isTypeBundle(typeName)) {
-            putMethod = "put" + getSimpleClassName(typeName);
-        } else if (isPrimitiveArray(element)) {
-            putMethod = "put" + getPrimitiveArrayClassName(element);
-        } else if (isParcelableArrayList(typeUtils, elementUtils, element)) {
+        if (methodParam.isPrimitive) {
+            putMethod = "put" + getPrimitiveClassName(methodParam.type);
+        } else if (methodParam.isString || methodParam.isBundle) {
+            putMethod = "put" + getSimpleClassName(methodParam.type);
+        } else if (methodParam.isPrimitiveArray) {
+            putMethod = "put" + getPrimitiveArrayClassName(methodParam.element);
+        } else if (methodParam.isParcelableArrayList) {
             putMethod = "putParcelableArrayList";
-        } else if (isParcelableArray(typeUtils, elementUtils, element)) {
+        } else if (methodParam.isParcelableArray) {
             putMethod = "putParcelableArray";
-        } else if (isSerializable(typeUtils, elementUtils, element)) {
+        } else if (methodParam.isSerializable) {
             putMethod = "putSerializable";
-        } else if (isTypeParcelable(typeUtils, elementUtils, element)) {
+        } else if (methodParam.isParcelable) {
             putMethod = "putParcelable";
         } else {
             // TODO revert
             putMethod = "putSerializable";
             // throw new RuntimeException("Unknown error");
         }
-        methodBuilder.addStatement("$L.$L($S, $L)", receiverName, putMethod, methodName, methodName);
+        methodBuilder.addStatement("$L.$L($S, $L)", receiverName, putMethod, methodParam.name, methodParam.name);
     }
 
     private String getTargetClassName(TypeElement originalClass) {
