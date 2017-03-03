@@ -11,7 +11,7 @@ public class StringUtils {
 
     public static String camelToSnake(String from) {
         if (from == null) {
-            throw new IllegalArgumentException("from is null");
+            throw new IllegalArgumentException("serializeFrom is null");
         }
 
         List<String> chunks = new ArrayList<>();
@@ -32,7 +32,7 @@ public class StringUtils {
 
     public static String capitalize(String from) {
         if (from == null) {
-            throw new IllegalArgumentException("from is null");
+            throw new IllegalArgumentException("serializeFrom is null");
         }
 
         StringBuilder stringBuilder = new StringBuilder(from.toLowerCase());

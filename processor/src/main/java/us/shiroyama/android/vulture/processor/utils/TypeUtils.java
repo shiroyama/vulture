@@ -1,5 +1,6 @@
 package us.shiroyama.android.vulture.processor.utils;
 
+import android.annotation.TargetApi;
 import android.os.Bundle;
 import android.os.Parcelable;
 
@@ -7,7 +8,10 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
 
 import java.io.Serializable;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
@@ -18,6 +22,8 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+
+import us.shiroyama.android.vulture.serializers.CustomSerializer;
 
 /**
  * @author Fumihiko Shiroyama
@@ -136,6 +142,61 @@ public class TypeUtils {
         TypeMirror componentType = arrayType.getComponentType();
         ClassName className = (ClassName) TypeName.get(componentType).box();
         return className.simpleName() + "Array";
+    }
+
+    @TargetApi(24)
+    public static Pair<TypeName, TypeName> getSerializeTypes(Class clazz) {
+        if (clazz.getGenericSuperclass() != null) {
+            Type type = clazz.getGenericSuperclass();
+            Pair<TypeName, TypeName> serializeTypes = getSerializeTypes(type);
+            if (serializeTypes != null) {
+                return serializeTypes;
+            }
+            getSerializeTypes(clazz.getSuperclass());
+        }
+
+        if (clazz.getGenericInterfaces().length > 0) {
+            for (Type type : clazz.getGenericInterfaces()) {
+                Pair<TypeName, TypeName> serializeTypes = getSerializeTypes(type);
+                if (serializeTypes != null) {
+                    return serializeTypes;
+                }
+            }
+            getSerializeTypes(clazz.getSuperclass());
+        }
+
+        throw new IllegalArgumentException("Invalid class: " + clazz);
+    }
+
+    @TargetApi(24)
+    private static Pair<TypeName, TypeName> getSerializeTypes(Type type) {
+        if (ParameterizedType.class.isInstance(type) && ParameterizedType.class.cast(type).getRawType() == CustomSerializer.class) {
+            Type[] types = ParameterizedType.class.cast(type).getActualTypeArguments();
+            TypeName serializeType = TypeName.get(types[0]);
+            TypeName deserializeType = TypeName.get(types[1]);
+            return Pair.of(serializeType, deserializeType);
+        }
+        return null;
+    }
+
+    @TargetApi(24)
+    public static Pair<TypeName, TypeName> getSerializeTypes(TypeElement typeElement) {
+        if (!typeElement.getInterfaces().isEmpty()) {
+            for (TypeMirror typeMirror : typeElement.getInterfaces()) {
+                DeclaredType declaredType = (DeclaredType) typeMirror;
+                if (declaredType.asElement().getSimpleName().toString().equals(CustomSerializer.class.getSimpleName())) {
+                    List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
+                    TypeName serializeType = TypeName.get(typeArguments.get(0));
+                    TypeName deserializeType = TypeName.get(typeArguments.get(1));
+                    return Pair.of(serializeType, deserializeType);
+                }
+            }
+
+            DeclaredType declaredType = (DeclaredType) typeElement.getSuperclass();
+            getSerializeTypes((TypeElement) declaredType.asElement());
+        }
+
+        throw new IllegalArgumentException("Invalid class: " + typeElement);
     }
 
 }
